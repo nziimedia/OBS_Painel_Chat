@@ -1,0 +1,1001 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Painel de Oração — AD Nazaré II</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=Source+Sans+3:wght@300;400;600;700&display=swap');
+
+:root {
+  --gold: #c9a84c;
+  --gold-light: #e8c97a;
+  --gold-dim: rgba(201,168,76,0.15);
+  --deep: #0d0d18;
+  --panel: #13131f;
+  --card: #1a1a2e;
+  --card2: #1f1f35;
+  --border: rgba(201,168,76,0.2);
+  --border2: rgba(255,255,255,0.06);
+  --text: #e8e0d0;
+  --muted: #6e6a60;
+  --muted2: #9a9080;
+  --success: #5cb88a;
+  --danger: #e05a5a;
+  --blue: #4a8fd4;  --pulpit: #9b6fd4;
+  --prayed: #5cb88a;
+}
+
+* { margin:0; padding:0; box-sizing:border-box; }
+
+body {
+  background: var(--deep);
+  color: var(--text);
+  font-family: 'Source Sans 3', sans-serif;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* ── Top Bar ── */
+.topbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 16px;
+  background: var(--panel);
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+.topbar-logo { font-family:'Cinzel',serif; font-size:14px; color:var(--gold); letter-spacing:2px; white-space:nowrap; }
+.topbar-logo span { font-size:16px; margin-right:6px; }
+.topbar-fields { display:flex; gap:8px; flex:1; align-items:center; }
+.topbar-fields select {
+  background: rgba(255,255,255,0.05); border: 1px solid var(--border);
+  border-radius: 7px; padding: 7px 12px; color: var(--text);
+  font-family: 'Source Sans 3', sans-serif; font-size: 12px; outline: none; flex: 1;
+}
+.topbar-fields select option { background: #1a1a2e; }
+
+.btn {
+  padding: 7px 14px; border-radius: 7px; border: none;
+  font-family: 'Source Sans 3', sans-serif; font-size: 12px; font-weight: 700;
+  cursor: pointer; transition: all 0.2s; white-space: nowrap;
+}
+.btn-gold { background: linear-gradient(135deg,var(--gold),#a8782a); color:#0d0d18; }
+.btn-gold:hover { filter:brightness(1.1); }
+.btn-gold:disabled { opacity:0.4; cursor:not-allowed; }
+.btn-outline { background:transparent; color:var(--muted2); border:1px solid var(--border); }
+.btn-outline:hover { border-color:var(--gold); color:var(--gold); }
+.btn-sm { padding:4px 10px; font-size:11px; border-radius:5px; }
+.btn-icon { background:transparent; border:1px solid var(--border); color:var(--muted2); width:32px; height:32px; border-radius:7px; font-size:15px; display:flex; align-items:center; justify-content:center; cursor:pointer; transition:all .2s; }
+.btn-icon:hover { border-color:var(--gold); color:var(--gold); }
+
+.status-pill {
+  display:flex; align-items:center; gap:6px; padding:5px 12px;
+  background: rgba(255,255,255,0.04); border: 1px solid var(--border);
+  border-radius: 20px; font-size:11px; color:var(--muted2); white-space:nowrap;
+}
+.dot { width:7px; height:7px; border-radius:50%; background:var(--muted); flex-shrink:0; }
+.dot.live { background:var(--success); box-shadow:0 0 6px rgba(92,184,138,0.7); animation:blink 2s infinite; }
+.dot.loading { background:var(--gold); animation:blink 0.8s infinite; }
+@keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.3} }
+
+/* ── Modal ── */
+.modal-overlay {
+  display:none; position:fixed; inset:0; background:rgba(0,0,0,0.85);
+  z-index:1000; align-items:center; justify-content:center;
+}
+.modal-overlay.active { display:flex; }
+.modal-box {
+  background:var(--card); border:1px solid var(--border); border-radius:12px;
+  padding:24px; width:460px; max-width:95vw; display:flex; flex-direction:column;
+  gap:10px; max-height:90vh; overflow-y:auto;
+}
+.modal-box h3 { font-family:'Cinzel',serif; color:var(--gold); font-size:15px; text-align:center; margin-bottom:6px; }
+.modal-label { font-size:11px; color:var(--gold); letter-spacing:1px; text-transform:uppercase; margin-top:4px; }
+.modal-label.blue { color:var(--blue); }
+.modal-input {
+  width:100%; background:rgba(255,255,255,0.05); border:1px solid var(--border);
+  border-radius:7px; padding:9px 12px; color:var(--text);
+  font-family:'Source Sans 3',sans-serif; font-size:13px; outline:none; transition:border-color .2s;
+}
+.modal-input:focus { border-color:var(--gold); }
+.modal-input::placeholder { color:var(--muted); }
+.modal-note {
+  font-size:11px; color:var(--muted); line-height:1.7; padding:10px 13px;
+  background:rgba(74,143,212,0.07); border:1px solid rgba(74,143,212,0.2); border-radius:7px;
+}
+.modal-note strong { color:var(--blue); }
+.modal-note a { color:var(--gold); }
+.modal-acts { display:flex; gap:8px; margin-top:6px; }
+
+/* Live Modal */
+.live-list { display:flex; flex-direction:column; gap:6px; max-height:220px; overflow-y:auto; }
+.live-opt {
+  padding:11px 13px; background:rgba(255,255,255,0.04); border:1px solid var(--border);
+  border-radius:8px; cursor:pointer; transition:all .2s;
+}
+.live-opt:hover { border-color:var(--gold); background:var(--gold-dim); }
+.live-opt .lo-title { font-size:13px; color:var(--text); font-weight:600; margin-bottom:2px; }
+.live-opt .lo-id { font-size:10px; color:var(--muted); }
+.live-opt .lo-badge { display:inline-block; background:rgba(224,90,90,0.15); color:#ff7070; border:1px solid rgba(224,90,90,0.3); border-radius:20px; padding:1px 7px; font-size:9px; font-weight:700; margin-left:6px; }
+
+/* ── Tabs ── */
+.tabs {
+  display:flex; gap:2px; padding:0 16px; background:var(--panel);
+  border-bottom:1px solid var(--border); flex-shrink:0;
+}
+.tab {
+  padding:9px 18px; font-size:13px; font-weight:600; color:var(--muted2);
+  cursor:pointer; border-bottom:2px solid transparent; transition:all 0.2s; user-select:none;
+}
+.tab:hover { color:var(--text); }
+.tab.active { color:var(--gold); border-bottom-color:var(--gold); }
+.tab-badge { display:inline-block; background:var(--gold-dim); color:var(--gold); border-radius:10px; padding:0 6px; font-size:10px; margin-left:4px; }
+
+/* ── Body ── */
+.body { display:flex; flex:1; overflow:hidden; }
+.pane { display:none; flex:1; overflow:hidden; flex-direction:column; }
+.pane.active { display:flex; }
+
+/* ── ABA CHAT ── */
+.chat-pane { flex-direction:row; }
+.chat-col { display:flex; flex-direction:column; overflow:hidden; border-right:1px solid var(--border2); }
+.chat-col.main { flex:1.4; }
+.chat-col.side { flex:1; }
+
+.col-header {
+  padding:9px 14px; font-family:'Cinzel',serif; font-size:10px; letter-spacing:2px;
+  color:var(--gold); text-transform:uppercase; border-bottom:1px solid var(--border2);
+  display:flex; align-items:center; justify-content:space-between; flex-shrink:0;
+}
+
+.chat-messages { flex:1; overflow-y:auto; padding:8px; display:flex; flex-direction:column; gap:3px; }
+.chat-messages::-webkit-scrollbar { width:4px; }
+.chat-messages::-webkit-scrollbar-thumb { background:var(--border); border-radius:2px; }
+
+.chat-msg {
+  padding:7px 9px; border-radius:7px; background:var(--card); border:1px solid transparent;
+  transition:all .2s; display:flex; gap:8px; align-items:flex-start;
+}
+.chat-msg:hover { border-color:var(--border); background:var(--card2); }
+.chat-msg.highlight { border-color:rgba(201,168,76,0.4); background:rgba(201,168,76,0.06); }
+.chat-msg.mine { background:rgba(74,143,212,0.07); border-color:rgba(74,143,212,0.2); }
+
+.msg-author { font-size:11px; font-weight:700; color:var(--gold); white-space:nowrap; min-width:80px; max-width:110px; overflow:hidden; text-overflow:ellipsis; }
+.msg-text { font-size:12px; color:var(--text); line-height:1.5; flex:1; }
+.msg-actions { display:flex; gap:3px; flex-shrink:0; opacity:0; transition:opacity .2s; }
+.chat-msg:hover .msg-actions { opacity:1; }
+
+.btn-add-prayer {
+  padding:3px 7px; font-size:10px; border-radius:4px; border:1px solid rgba(201,168,76,0.4);
+  background:rgba(201,168,76,0.1); color:var(--gold); cursor:pointer; font-weight:700; transition:all .2s; white-space:nowrap;
+}
+.btn-add-prayer:hover { background:rgba(201,168,76,0.2); }
+.btn-add-prayer.added { border-color:rgba(92,184,138,0.4); background:rgba(92,184,138,0.1); color:var(--success); }
+
+/* Reply bar */
+.reply-bar { padding:10px; border-top:1px solid var(--border2); display:flex; flex-direction:column; gap:6px; flex-shrink:0; background:var(--panel); }
+.reply-to { font-size:10px; color:var(--blue); padding:3px 9px; background:rgba(74,143,212,0.08); border-radius:4px; border-left:2px solid var(--blue); display:none; align-items:center; gap:6px; }
+.reply-to.show { display:flex; }
+.reply-row { display:flex; gap:6px; }
+.reply-input { flex:1; background:rgba(255,255,255,0.05); border:1px solid var(--border); border-radius:7px; padding:8px 12px; color:var(--text); font-size:12px; outline:none; font-family:'Source Sans 3',sans-serif; transition:border-color .2s; }
+.reply-input:focus { border-color:var(--blue); }
+.reply-input::placeholder { color:var(--muted); }
+
+/* Side panel */
+.side-section { padding:10px; border-bottom:1px solid var(--border2); display:flex; flex-direction:column; gap:6px; flex-shrink:0; }
+.side-section input, .side-section textarea {
+  width:100%; background:rgba(255,255,255,0.04); border:1px solid var(--border);
+  border-radius:7px; padding:7px 11px; color:var(--text);
+  font-family:'Source Sans 3',sans-serif; font-size:12px; outline:none; transition:border-color .2s;
+}
+.side-section input:focus, .side-section textarea:focus { border-color:var(--gold); }
+.side-section input::placeholder, .side-section textarea::placeholder { color:var(--muted); }
+.side-section textarea { resize:none; height:50px; }
+.side-section select { width:100%; background:rgba(255,255,255,0.04); border:1px solid var(--border); border-radius:7px; padding:7px 11px; color:var(--text); font-size:12px; outline:none; }
+.side-section select option { background:#1a1a2e; }
+.side-label { font-size:10px; color:var(--muted2); letter-spacing:0.5px; }
+
+/* ── ABA PEDIDOS ── */
+.prayers-toolbar { display:flex; align-items:center; gap:8px; padding:9px 14px; border-bottom:1px solid var(--border2); flex-shrink:0; flex-wrap:wrap; }
+.prayers-toolbar span { font-size:11px; color:var(--muted2); }
+.filter-btn { padding:3px 10px; border-radius:20px; border:1px solid var(--border); background:transparent; color:var(--muted2); font-size:11px; cursor:pointer; transition:all .2s; }
+.filter-btn.active { border-color:var(--gold); color:var(--gold); background:var(--gold-dim); }
+.spacer { flex:1; }
+
+.prayers-list { flex:1; overflow-y:auto; padding:10px; display:flex; flex-direction:column; gap:7px; }
+.prayers-list::-webkit-scrollbar { width:4px; }
+.prayers-list::-webkit-scrollbar-thumb { background:var(--border); border-radius:2px; }
+
+.prayer-card {
+  background:var(--card); border:1px solid var(--border2); border-radius:9px;
+  padding:11px 13px; position:relative; transition:all .2s; overflow:hidden;
+}
+.prayer-card::before { content:''; position:absolute; left:0; top:0; bottom:0; width:3px; background:var(--gold); border-radius:9px 0 0 9px; opacity:.6; }
+.prayer-card.pulpit::before { background:var(--pulpit); opacity:1; }
+.prayer-card.prayed::before { background:var(--prayed); opacity:1; }
+.prayer-card.prayed { opacity:.6; }
+
+.pc-top { display:flex; align-items:flex-start; gap:8px; margin-bottom:5px; }
+.pc-name { font-family:'Cinzel',serif; font-size:13px; color:var(--gold-light); font-weight:600; flex:1; }
+.pc-time { font-size:10px; color:var(--muted); white-space:nowrap; }
+.pc-reason { font-size:12px; color:var(--text); line-height:1.5; margin-bottom:6px; }
+.pc-original { font-size:11px; color:var(--muted2); font-style:italic; margin-bottom:8px; padding:5px 9px; background:rgba(255,255,255,0.03); border-radius:4px; border-left:2px solid var(--border); }
+.pc-actions { display:flex; gap:5px; flex-wrap:wrap; }
+
+.btn-pc { padding:4px 9px; font-size:10px; border-radius:5px; border:none; cursor:pointer; font-family:'Source Sans 3',sans-serif; font-weight:700; transition:all .2s; }
+.btn-pulpit { background:rgba(155,111,212,0.12); color:var(--pulpit); border:1px solid rgba(155,111,212,0.25); }
+.btn-pulpit:hover, .btn-pulpit.on { background:rgba(155,111,212,0.25); }
+.btn-prayed2 { background:rgba(92,184,138,0.12); color:var(--prayed); border:1px solid rgba(92,184,138,0.25); }
+.btn-prayed2:hover, .btn-prayed2.on { background:rgba(92,184,138,0.25); }
+.btn-telao { background:rgba(201,168,76,0.1); color:var(--gold); border:1px solid rgba(201,168,76,0.25); }
+.btn-telao:hover, .btn-telao.on { background:rgba(201,168,76,0.2); }
+.btn-del { background:rgba(224,90,90,0.08); color:var(--danger); border:1px solid rgba(224,90,90,0.2); }
+.btn-del:hover { background:rgba(224,90,90,0.18); }
+
+.empty-state { text-align:center; padding:40px 20px; color:var(--muted); font-size:12px; border:1px dashed var(--border); border-radius:9px; margin:10px; }
+.empty-icon { font-size:28px; display:block; margin-bottom:8px; opacity:.4; }
+
+/* ── ABA TELÃO ── */
+.telao-pane { flex-direction:row; }
+.telao-controls { width:255px; flex-shrink:0; border-right:1px solid var(--border2); display:flex; flex-direction:column; overflow:hidden; }
+.telao-preview { flex:1; display:flex; align-items:center; justify-content:center; padding:28px; background:#000; overflow:auto; }
+
+/* CARD 16:9 FUNDO PRETO */
+.telao-card {
+  width: 100%;
+  max-width: 960px;
+  aspect-ratio: 16 / 9;
+  background: #000000;
+  border: 1px solid rgba(201,168,76,0.25);
+  padding: 44px 64px;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  box-shadow: 0 0 60px rgba(201,168,76,0.06);
+}
+
+.telao-church {
+  font-family:'Cinzel',serif; font-size:12px; color:rgba(201,168,76,0.5);
+  letter-spacing:4px; text-transform:uppercase; text-align:center; margin-bottom:16px;
+}
+.telao-divider { height:1px; background:linear-gradient(to right,transparent,rgba(201,168,76,0.35),transparent); margin-bottom:18px; }
+.telao-heading { font-family:'Cinzel',serif; font-size:13px; color:var(--gold); letter-spacing:3px; text-transform:uppercase; text-align:center; margin-bottom:22px; }
+.telao-names { display:flex; flex-direction:column; gap:10px; flex:1; overflow:hidden; }
+.telao-item { display:flex; gap:14px; align-items:flex-start; padding:9px 0; border-bottom:1px solid rgba(201,168,76,0.07); }
+.telao-item:last-child { border-bottom:none; }
+.telao-num { font-family:'Cinzel',serif; font-size:11px; color:rgba(201,168,76,0.35); width:18px; flex-shrink:0; padding-top:3px; }
+.telao-item-name { font-family:'Cinzel',serif; font-size:20px; color:var(--gold-light); font-weight:600; margin-bottom:3px; }
+.telao-item-reason { font-size:13px; color:rgba(232,224,208,0.55); line-height:1.4; }
+.telao-footer-div { height:1px; background:linear-gradient(to right,transparent,rgba(201,168,76,0.35),transparent); margin-top:auto; padding-top:14px; }
+.telao-footer { font-family:'Cinzel',serif; font-size:10px; color:rgba(201,168,76,0.3); letter-spacing:3px; text-transform:uppercase; text-align:center; margin-top:12px; }
+.telao-empty { text-align:center; padding:40px; color:rgba(201,168,76,0.25); font-family:'Cinzel',serif; font-size:12px; letter-spacing:2px; }
+
+.ctrl-header { padding:10px 14px; font-family:'Cinzel',serif; font-size:10px; letter-spacing:2px; color:var(--gold); text-transform:uppercase; border-bottom:1px solid var(--border2); flex-shrink:0; }
+.ctrl-list { flex:1; overflow-y:auto; padding:8px; display:flex; flex-direction:column; gap:5px; }
+.ctrl-list::-webkit-scrollbar { width:4px; }
+.ctrl-list::-webkit-scrollbar-thumb { background:var(--border); border-radius:2px; }
+.ctrl-item { display:flex; align-items:center; gap:8px; padding:7px 9px; background:var(--card); border:1px solid var(--border2); border-radius:6px; cursor:pointer; transition:all .2s; }
+.ctrl-item:hover { border-color:var(--border); }
+.ctrl-item.selected { border-color:rgba(201,168,76,0.4); background:rgba(201,168,76,0.06); }
+.ctrl-check { width:15px; height:15px; border-radius:3px; border:1px solid var(--border); display:flex; align-items:center; justify-content:center; font-size:9px; color:var(--gold); flex-shrink:0; }
+.ctrl-item.selected .ctrl-check { background:var(--gold-dim); border-color:var(--gold); }
+.ctrl-name { font-size:12px; color:var(--text); flex:1; font-weight:600; }
+.ctrl-reason { font-size:10px; color:var(--muted2); }
+.ctrl-footer { padding:8px; border-top:1px solid var(--border2); display:flex; flex-direction:column; gap:6px; flex-shrink:0; }
+
+/* Log */
+.log-strip { height:26px; background:var(--panel); border-top:1px solid var(--border2); padding:0 14px; display:flex; align-items:center; gap:8px; font-size:10px; color:var(--muted); flex-shrink:0; overflow:hidden; }
+.log-strip span { font-family:monospace; }
+.ll { color:#6ab0f5; } .ls { color:var(--success); } .lw { color:var(--gold); } .le { color:var(--danger); }
+</style>
+</head>
+<body>
+
+<!-- MODAL CONFIGURAÇÕES -->
+<div id="modalSettings" class="modal-overlay">
+  <div class="modal-box">
+    <h3>⚙ Configurações</h3>
+
+    <div class="modal-label">Handle do Canal</div>
+    <input class="modal-input" type="text" id="cfgHandle" placeholder="@ADNazareII" />
+
+    <div class="modal-label">YouTube API Key</div>
+    <input class="modal-input" type="password" id="cfgYtKey" placeholder="AIzaSy..." />
+
+    <div class="modal-label blue">YouTube OAuth Client ID <span style="font-size:9px;opacity:.7">(para enviar mensagens)</span></div>
+    <input class="modal-input" type="text" id="cfgClientId" placeholder="xxxxx.apps.googleusercontent.com" />
+
+    <div class="modal-label">Gemini API Key <span style="font-size:9px;opacity:.7">(opcional — IA de pedidos)</span></div>
+    <input class="modal-input" type="password" id="cfgGeminiKey" placeholder="AIzaSy..." />
+
+    <div class="modal-label" style="margin-top:8px;">Identidade do Telão — Linha 1</div>
+    <input class="modal-input" type="text" id="cfgL1" placeholder="AD Nazaré II" />
+
+    <div class="modal-label">Identidade do Telão — Linha 2</div>
+    <input class="modal-input" type="text" id="cfgL2" placeholder="Setor 31" />
+
+    <div class="modal-label">Versículo do rodapé</div>
+    <input class="modal-input" type="text" id="cfgVerse" placeholder="Filipenses 4:6" />
+
+    <div class="modal-note">
+      <strong>YouTube API Key:</strong> console.cloud.google.com → YouTube Data API v3 → Credenciais<br>
+      <strong>OAuth Client ID:</strong> Credenciais → Criar → Aplicativo da Web → adicione <code>null</code> nas origens autorizadas<br>
+      <strong>Gemini (grátis):</strong> aistudio.google.com/app/apikey
+    </div>
+
+    <div class="modal-acts">
+      <button class="btn btn-outline" style="flex:1" onclick="closeModal('modalSettings')">Cancelar</button>
+      <button class="btn btn-gold" style="flex:1" onclick="saveSettings()">💾 Salvar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL LIVES -->
+<div id="modalLives" class="modal-overlay">
+  <div class="modal-box" style="width:420px">
+    <h3>📡 Lives Ativas — <span id="modalLivesHandle"></span></h3>
+    <div class="live-list" id="liveList">
+      <div style="color:var(--muted);font-size:12px;text-align:center;padding:16px;">Buscando...</div>
+    </div>
+    <div class="modal-acts" style="margin-top:8px">
+      <button class="btn btn-outline" style="flex:1" onclick="closeModal('modalLives')">Fechar</button>
+    </div>
+  </div>
+</div>
+
+<!-- TOPBAR -->
+<div class="topbar">
+  <div class="topbar-logo"><span>✝</span>AD Nazaré II</div>
+  <div class="topbar-fields">
+    <button class="btn btn-outline" onclick="openLives()">🔴 Buscar Lives</button>
+    <select id="liveSelect"><option value="">— selecione uma live ativa —</option></select>
+  </div>
+  <button class="btn btn-gold" id="btnStart" onclick="startMonitor()">▶ Conectar</button>
+  <button class="btn btn-outline" id="btnStop" onclick="stopMonitor()" disabled>⏹ Parar</button>
+  <div class="status-pill"><div class="dot" id="dot"></div><span id="statusTxt">Desconectado</span></div>
+  <button class="btn-icon" onclick="openModal('modalSettings')" title="Configurações">⚙</button>
+</div>
+
+<!-- TABS -->
+<div class="tabs">
+  <div class="tab active" onclick="switchTab('chat',this)">💬 Chat <span class="tab-badge" id="bChat">0</span></div>
+  <div class="tab" onclick="switchTab('prayers',this)">🙏 Pedidos <span class="tab-badge" id="bPray">0</span></div>
+  <div class="tab" onclick="switchTab('telao',this)">📺 Telão <span class="tab-badge" id="bTelao">0</span></div>
+</div>
+
+<div class="body">
+
+  <!-- ══ CHAT ══ -->
+  <div class="pane chat-pane active" id="pane-chat">
+    <div class="chat-col main">
+      <div class="col-header">
+        <span>Mensagens da Live</span>
+        <label style="font-size:10px;color:var(--muted2);display:flex;align-items:center;gap:5px;cursor:pointer;">
+          <input type="checkbox" id="autoScroll" checked style="accent-color:var(--gold)"> Auto-scroll
+        </label>
+      </div>
+      <div class="chat-messages" id="chatMessages">
+        <div style="text-align:center;padding:40px;color:var(--muted);font-size:12px;">Configure em ⚙ e clique em 🔴 Buscar Lives para começar.</div>
+      </div>
+      <div class="reply-bar">
+        <div class="reply-to" id="replyTo">
+          <span id="replyToTxt"></span>
+          <button onclick="clearReply()" style="background:none;border:none;color:var(--muted2);cursor:pointer;font-size:13px;margin-left:auto;">✕</button>
+        </div>
+        <div class="reply-row">
+          <input class="reply-input" id="replyInput" placeholder="Digite uma mensagem para o chat ao vivo..." onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendMessage();}" />
+          <button class="btn btn-gold" id="btnSend" onclick="sendMessage()">Enviar ↵</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="chat-col side">
+      <div class="col-header">✝ Pedido Manual</div>
+      <div class="side-section">
+        <input type="text" id="manName" placeholder="Nome da pessoa" />
+        <textarea id="manReason" placeholder="Motivo do pedido..."></textarea>
+        <button class="btn btn-gold" style="width:100%" onclick="addManual()">+ Adicionar Pedido</button>
+      </div>
+      <div class="col-header">⚙ Detecção IA</div>
+      <div class="side-section">
+        <div class="side-label">Palavras-chave:</div>
+        <input type="text" id="keywords" value="oração,ore por,pedido de oração,orem por,preciso de oração,pede oração,intercede,orar por,intercessão,cura,saúde" />
+        <div class="side-label" style="margin-top:4px">Intervalo de varredura:</div>
+        <select id="interval">
+          <option value="20">20 segundos</option>
+          <option value="30" selected>30 segundos</option>
+          <option value="60">60 segundos</option>
+        </select>
+        <div style="font-size:10px;color:var(--muted);margin-top:4px;line-height:1.6">IA detecta automaticamente pedidos nos comentários com palavras-chave.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ PEDIDOS ══ -->
+  <div class="pane" id="pane-prayers">
+    <div class="prayers-toolbar">
+      <span>Filtrar:</span>
+      <button class="filter-btn active" onclick="setFilter('all',this)">Todos</button>
+      <button class="filter-btn" onclick="setFilter('pending',this)">Pendentes</button>
+      <button class="filter-btn" onclick="setFilter('pulpit',this)">No Púlpito</button>
+      <button class="filter-btn" onclick="setFilter('prayed',this)">Já orou</button>
+      <div class="spacer"></div>
+      <button class="btn btn-outline btn-sm" onclick="exportPrayers()">⬇ Exportar .txt</button>
+      <button class="btn btn-sm" style="background:rgba(224,90,90,0.1);color:var(--danger);border:1px solid rgba(224,90,90,0.2)" onclick="clearPrayed()">🗑 Limpar orados</button>
+    </div>
+    <div class="prayers-list" id="prayersList">
+      <div class="empty-state"><span class="empty-icon">🙏</span>Nenhum pedido ainda.</div>
+    </div>
+  </div>
+
+  <!-- ══ TELÃO ══ -->
+  <div class="pane telao-pane" id="pane-telao">
+    <div class="telao-controls">
+      <div class="ctrl-header">Selecionar para Telão</div>
+      <div class="ctrl-list" id="ctrlList">
+        <div style="padding:16px;text-align:center;color:var(--muted);font-size:12px;">Adicione pedidos primeiro</div>
+      </div>
+      <div class="ctrl-footer">
+        <button class="btn btn-gold" style="width:100%" onclick="exportImage()">📷 Exportar como Imagem</button>
+        <button class="btn btn-outline btn-sm" style="width:100%" onclick="selAll()">Selecionar todos</button>
+        <button class="btn btn-outline btn-sm" style="width:100%" onclick="clearSel()">Limpar seleção</button>
+      </div>
+    </div>
+
+    <div class="telao-preview">
+      <div class="telao-card" id="telaoCard">
+        <div class="telao-church" id="telaoChurch">AD Nazaré II &nbsp;|&nbsp; Setor 31</div>
+        <div class="telao-divider"></div>
+        <div class="telao-heading">Pedidos de Oração</div>
+        <div class="telao-names" id="telaoNames">
+          <div class="telao-empty">Selecione os pedidos ao lado</div>
+        </div>
+        <div class="telao-footer-div"></div>
+        <div class="telao-footer" id="telaoVerse">Filipenses 4:6 — Em tudo pela oração apresentai os vossos pedidos a Deus</div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<div class="log-strip">
+  <span style="color:var(--muted2);flex-shrink:0">LOG:</span>
+  <span id="logEl" class="ll">Sistema pronto. Configure em ⚙ e busque lives para começar.</span>
+</div>
+
+<script>
+// ════════════════════════════
+// STATE
+// ════════════════════════════
+let prayers = [];
+let monitorInterval = null;
+let liveChatId = null;
+let nextPageToken = null;
+let processedIds = new Set();
+let addedMsgIds = new Set();
+let totalMsgs = 0;
+let filterMode = 'all';
+let oauthClient = null;
+let accessToken = null;
+let pendingSendText = null;
+
+// ════════════════════════════
+// INIT
+// ════════════════════════════
+window.onload = () => {
+  loadSettings();
+  // OAuth init (após GSI carregar)
+  setTimeout(initOAuth, 1500);
+};
+
+function loadSettings() {
+  const s = key => localStorage.getItem(key) || '';
+  document.getElementById('cfgHandle').value   = s('handle') || '@ADNazareII';
+  document.getElementById('cfgYtKey').value    = s('ytKey');
+  document.getElementById('cfgClientId').value = s('clientId');
+  document.getElementById('cfgGeminiKey').value= s('geminiKey');
+  document.getElementById('cfgL1').value       = s('l1') || 'AD Nazaré II';
+  document.getElementById('cfgL2').value       = s('l2') || 'Setor 31';
+  document.getElementById('cfgVerse').value    = s('verse') || 'Filipenses 4:6 — Em tudo pela oração apresentai os vossos pedidos a Deus';
+  updateTelaoIdent();
+}
+
+function saveSettings() {
+  localStorage.setItem('handle',   document.getElementById('cfgHandle').value.trim());
+  localStorage.setItem('ytKey',    document.getElementById('cfgYtKey').value.trim());
+  localStorage.setItem('clientId', document.getElementById('cfgClientId').value.trim());
+  localStorage.setItem('geminiKey',document.getElementById('cfgGeminiKey').value.trim());
+  localStorage.setItem('l1',       document.getElementById('cfgL1').value.trim());
+  localStorage.setItem('l2',       document.getElementById('cfgL2').value.trim());
+  localStorage.setItem('verse',    document.getElementById('cfgVerse').value.trim());
+  closeModal('modalSettings');
+  updateTelaoIdent();
+  initOAuth();
+  log('Configurações salvas ✓', 'ls');
+}
+
+function initOAuth() {
+  const clientId = localStorage.getItem('clientId'); // Use o NOVO ID aqui
+  if (!clientId || typeof google === 'undefined') return;
+  try {
+    oauthClient = google.accounts.oauth2.initTokenClient({
+      client_id: clientId,
+      scope: 'https://www.googleapis.com/auth/youtube.force-ssl',
+      // NÃO ADICIONE 'origin' ou 'redirect_uri' aqui para Desktop Apps
+      callback: (resp) => {
+        if (resp && resp.access_token) {
+          accessToken = resp.access_token;
+          log('Login efetuado com sucesso!', 'ls');
+        }
+      }
+    });
+    log('OAuth de Desktop configurado.', 'ls');
+  } catch(e) { log('Erro: ' + e.message, 'le'); }
+}
+
+
+// ════════════════════════════
+// MODALS
+// ════════════════════════════
+function openModal(id)  { document.getElementById(id).classList.add('active'); }
+function closeModal(id) { document.getElementById(id).classList.remove('active'); }
+
+// ════════════════════════════
+// TABS / LOG / STATUS
+// ════════════════════════════
+function switchTab(id, el) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.pane').forEach(p => p.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById('pane-' + id).classList.add('active');
+}
+
+function log(msg, cls='ll') {
+  const e = document.getElementById('logEl');
+  e.className = cls;
+  e.textContent = `[${new Date().toLocaleTimeString('pt-BR')}] ${msg}`;
+}
+
+function setStatus(txt, state='') {
+  document.getElementById('statusTxt').textContent = txt;
+  document.getElementById('dot').className = 'dot' + (state ? ' ' + state : '');
+}
+
+function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function nowT() { return new Date().toLocaleTimeString('pt-BR'); }
+
+// ════════════════════════════
+// BUSCAR LIVES
+// ════════════════════════════
+async function openLives() {
+  const ytKey  = localStorage.getItem('ytKey');
+  const handle = localStorage.getItem('handle') || '@ADNazareII';
+  if (!ytKey) { alert('Configure a YouTube API Key em ⚙ primeiro.'); return; }
+
+  document.getElementById('modalLivesHandle').textContent = handle;
+  document.getElementById('liveList').innerHTML = '<div style="color:var(--muted);font-size:12px;text-align:center;padding:16px;">Buscando...</div>';
+  openModal('modalLives');
+  log('Buscando lives ativas em ' + handle + '...', 'll');
+
+  try {
+    // 1. Resolve handle → channelId usando forHandle
+    const r1 = await fetch(`https://www.googleapis.com/youtube/v3/channels?part=id&forHandle=${encodeURIComponent(handle)}&key=${ytKey}`);
+    const d1 = await r1.json();
+    if (d1.error) throw new Error(d1.error.message);
+    const channelId = d1.items?.[0]?.id;
+    if (!channelId) throw new Error('Canal não encontrado: ' + handle);
+
+    // 2. Buscar lives ativas
+    const r2 = await fetch(`https://www.googleapis.com/youtube/v3/search?part=snippet&channelId=${channelId}&eventType=live&type=video&key=${ytKey}`);
+    const d2 = await r2.json();
+    if (d2.error) throw new Error(d2.error.message);
+
+    const items = d2.items || [];
+    const ll = document.getElementById('liveList');
+    const sel = document.getElementById('liveSelect');
+
+    if (!items.length) {
+      ll.innerHTML = '<div style="color:var(--muted);font-size:12px;text-align:center;padding:16px;">Nenhuma live ativa no momento.</div>';
+      log('Nenhuma live ativa encontrada.', 'lw');
+      return;
+    }
+
+    // Popula modal e dropdown
+    sel.innerHTML = '<option value="">— selecione uma live ativa —</option>';
+    ll.innerHTML = items.map(i => `
+      <div class="live-opt" onclick="selectLive('${i.id.videoId}','${esc(i.snippet.title)}')">
+        <div class="lo-title">${esc(i.snippet.title)} <span class="lo-badge">🔴 AO VIVO</span></div>
+        <div class="lo-id">ID: ${i.id.videoId}</div>
+      </div>`).join('');
+
+    items.forEach(i => {
+      const opt = document.createElement('option');
+      opt.value = i.id.videoId;
+      opt.textContent = '🔴 ' + i.snippet.title;
+      sel.appendChild(opt);
+    });
+    if (items.length === 1) sel.selectedIndex = 1;
+
+    log(`${items.length} live(s) encontrada(s).`, 'ls');
+  } catch(e) {
+    document.getElementById('liveList').innerHTML = `<div style="color:var(--danger);font-size:12px;padding:12px;">${esc(e.message)}</div>`;
+    log('Erro: ' + e.message, 'le');
+  }
+}
+
+function selectLive(videoId, title) {
+  const sel = document.getElementById('liveSelect');
+  // garante a option existe
+  let found = false;
+  for (let i = 0; i < sel.options.length; i++) {
+    if (sel.options[i].value === videoId) { sel.selectedIndex = i; found = true; break; }
+  }
+  if (!found) {
+    const opt = document.createElement('option');
+    opt.value = videoId; opt.textContent = '🔴 ' + title;
+    sel.appendChild(opt); sel.value = videoId;
+  }
+  closeModal('modalLives');
+  log('Live selecionada: ' + title, 'ls');
+}
+
+// ════════════════════════════
+// YOUTUBE API
+// ════════════════════════════
+async function getLiveChatId(videoId, ytKey) {
+  // URL CORRIGIDA
+  const r = await fetch(`https://www.googleapis.com/youtube/v3/videos?part=liveStreamingDetails&id=${videoId}&key=${ytKey}`);
+  const d = await r.json();
+  if (d.error) throw new Error('YouTube: ' + d.error.message);
+  const chatId = d?.items?.[0]?.liveStreamingDetails?.activeLiveChatId;
+  if (!chatId) throw new Error('Chat ao vivo não encontrado. A live está ativa?');
+  return chatId;
+}
+
+async function fetchChat(chatId, ytKey, pageToken) {
+  let url = `https://www.googleapis.com/youtube/v3/liveChat/messages?liveChatId=${chatId}&part=snippet,authorDetails&maxResults=200&key=${ytKey}`;
+  if (pageToken) url += '&pageToken=' + pageToken;
+  const r = await fetch(url);
+  const d = await r.json();
+  if (d.error) throw new Error('Chat: ' + d.error.message);
+  return d;
+}
+
+// ════════════════════════════
+// ENVIAR MENSAGEM (OAuth2)
+// ════════════════════════════
+function sendMessage() {
+  const text = document.getElementById('replyInput').value.trim();
+  if (!text) return;
+  if (!liveChatId) { alert('Conecte a uma live primeiro.'); return; }
+
+  const clientId = localStorage.getItem('clientId');
+  if (!clientId) { alert('Configure o OAuth Client ID em ⚙ para enviar mensagens.'); return; }
+
+  if (!accessToken) {
+    log('Abrindo login Google para autorizar envio...', 'lw');
+    pendingSendText = text;
+    oauthClient.requestAccessToken({ prompt: '' });
+  } else {
+    doSend(text);
+  }
+}
+
+async function doSend(text) {
+  const btn = document.getElementById('btnSend');
+  btn.disabled = true;
+  log('Enviando mensagem...', 'll');
+  try {
+    const r = await fetch('https://www.googleapis.com/youtube/v3/liveChat/messages?part=snippet', {
+      method: 'POST',
+      headers: { 'Authorization': 'Bearer ' + accessToken, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        snippet: {
+          liveChatId: liveChatId,
+          type: 'textMessageEvent',
+          textMessageDetails: { messageText: text }
+        }
+      })
+    });
+    const d = await r.json();
+    if (d.error) {
+      if (d.error.code === 401) {
+        accessToken = null; pendingSendText = text;
+        log('Sessão expirada. Re-autenticando...', 'lw');
+        oauthClient.requestAccessToken({ prompt: '' });
+      } else throw new Error(d.error.message);
+    } else {
+      document.getElementById('replyInput').value = '';
+      clearReply();
+      // mostra localmente
+      appendMsg({ id: 'sent-' + Date.now(), author: '✉ Você', text }, false, true);
+      log('Mensagem enviada ao chat ✓', 'ls');
+    }
+  } catch(e) { log('Erro ao enviar: ' + e.message, 'le'); }
+  finally { btn.disabled = false; }
+}
+
+function setReply(author) {
+  document.getElementById('replyTo').classList.add('show');
+  document.getElementById('replyToTxt').textContent = 'Respondendo: @' + author;
+  document.getElementById('replyInput').focus();
+}
+function clearReply() { document.getElementById('replyTo').classList.remove('show'); }
+
+// ════════════════════════════
+// GEMINI
+// ════════════════════════════
+async function analyzeWithGemini(comments, keywords, geminiKey) {
+  const kwList = keywords.split(',').map(k=>k.trim()).filter(Boolean).join(', ');
+  const prompt = `Analise comentários de uma live cristã. Identifique APENAS pedidos de oração.\nPalavras-chave de referência: ${kwList}\n\nPara cada pedido extraia:\n- nome: autor ou nome mencionado\n- motivo: resumo compassivo em até 2 frases\n- original: texto original\n\nRetorne SOMENTE JSON válido sem markdown:\n{"pedidos":[{"nome":"...","motivo":"...","original":"..."}]}\n\nSe não houver: {"pedidos":[]}\n\nComentários:\n${comments.map((c,i)=>`[${i+1}] ${c.author}: "${c.text}"`).join('\n')}`;
+
+  const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiKey}`, {
+    method: 'POST', headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({ contents:[{parts:[{text:prompt}]}], generationConfig:{temperature:0.1,maxOutputTokens:1024} })
+  });
+  const d = await r.json();
+  if (d.error) throw new Error('Gemini: ' + d.error.message);
+  const txt = d?.candidates?.[0]?.content?.parts?.[0]?.text || '{"pedidos":[]}';
+  return JSON.parse(txt.replace(/```json|```/g,'').trim()).pedidos || [];
+}
+
+// ════════════════════════════
+// CHAT RENDER
+// ════════════════════════════
+function appendMsg(msg, highlight, isMine) {
+  const el = document.getElementById('chatMessages');
+  // Remove placeholder inicial
+  const ph = el.querySelector('[data-placeholder]');
+  if (ph) ph.remove();
+
+  const div = document.createElement('div');
+  div.className = 'chat-msg' + (highlight?' highlight':'') + (isMine?' mine':'');
+  div.id = 'cm-' + msg.id;
+  div.innerHTML = `
+    <div class="msg-author" title="${esc(msg.author)}">${esc(msg.author)}</div>
+    <div class="msg-text">${esc(msg.text)}</div>
+    <div class="msg-actions">
+      ${!isMine ? `<button onclick="setReply('${esc(msg.author)}')" style="padding:3px 7px;font-size:10px;border-radius:4px;border:1px solid rgba(74,143,212,0.3);background:rgba(74,143,212,0.08);color:var(--blue);cursor:pointer;font-weight:700;">↩</button>` : ''}
+      <button class="btn-add-prayer ${addedMsgIds.has(msg.id)?'added':''}" onclick="addFromChat('${msg.id}','${esc(msg.author)}','${esc(msg.text)}',this)">
+        ${addedMsgIds.has(msg.id)?'✓':'+ Oração'}
+      </button>
+    </div>`;
+  el.appendChild(div);
+  if (document.getElementById('autoScroll').checked) el.scrollTop = el.scrollHeight;
+}
+
+// ════════════════════════════
+// PRAYERS
+// ════════════════════════════
+function addPrayer(nome, motivo, original='') {
+  prayers.unshift({ id: Date.now(), nome, motivo, original, time: nowT(), pulpit:false, prayed:false, telao:false });
+  updateBadges(); renderPrayers(); renderCtrl();
+  log('Pedido adicionado: ' + nome, 'ls');
+}
+
+function addFromChat(msgId, author, text, btn) {
+  if (addedMsgIds.has(msgId)) return;
+  addedMsgIds.add(msgId);
+  btn.textContent = '✓'; btn.classList.add('added');
+  addPrayer(author.replace(/#\d+/g,'').trim(), text, text);
+}
+
+function addManual() {
+  const n = document.getElementById('manName').value.trim();
+  const r = document.getElementById('manReason').value.trim();
+  if (!n) { alert('Informe o nome.'); return; }
+  addPrayer(n, r || '(sem motivo informado)', '');
+  document.getElementById('manName').value = '';
+  document.getElementById('manReason').value = '';
+}
+
+function setFilter(f, btn) {
+  filterMode = f;
+  document.querySelectorAll('.filter-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active'); renderPrayers();
+}
+
+function filtered() {
+  if (filterMode==='pending') return prayers.filter(p=>!p.pulpit&&!p.prayed);
+  if (filterMode==='pulpit')  return prayers.filter(p=>p.pulpit);
+  if (filterMode==='prayed')  return prayers.filter(p=>p.prayed);
+  return prayers;
+}
+
+function renderPrayers() {
+  const list = document.getElementById('prayersList');
+  const fp = filtered();
+  if (!fp.length) { list.innerHTML = '<div class="empty-state"><span class="empty-icon">🙏</span>Nenhum pedido aqui.</div>'; return; }
+  list.innerHTML = fp.map(p => {
+    const cls = p.prayed ? 'prayed' : p.pulpit ? 'pulpit' : '';
+    return `<div class="prayer-card ${cls}">
+      <div class="pc-top"><div class="pc-name">🙏 ${esc(p.nome)}</div><div class="pc-time">${p.time}</div></div>
+      ${p.motivo ? `<div class="pc-reason">${esc(p.motivo)}</div>` : ''}
+      ${p.original && p.original !== p.motivo ? `<div class="pc-original">"${esc(p.original)}"</div>` : ''}
+      <div class="pc-actions">
+        <button class="btn-pc btn-pulpit ${p.pulpit?'on':''}" onclick="flag(${p.id},'pulpit')">${p.pulpit?'✓ No Púlpito':'🎤 Chamar ao Púlpito'}</button>
+        <button class="btn-pc btn-prayed2 ${p.prayed?'on':''}" onclick="flag(${p.id},'prayed')">${p.prayed?'✓ Pastor Orou':'🙏 Pastor Orou'}</button>
+        <button class="btn-pc btn-telao ${p.telao?'on':''}" onclick="flag(${p.id},'telao')">${p.telao?'✓ Telão':'📺 Telão'}</button>
+        <button class="btn-pc btn-del" onclick="delPrayer(${p.id})">✕</button>
+      </div></div>`;
+  }).join('');
+}
+
+function flag(id, f) {
+  const p = prayers.find(x=>x.id===id); if (!p) return;
+  p[f] = !p[f];
+  if (f==='pulpit' && p[f]) log(p.nome + ' chamado ao púlpito ✝', 'lw');
+  if (f==='prayed' && p[f]) log('Pastor orou por ' + p.nome + ' ✓', 'ls');
+  renderPrayers(); updateBadges();
+  if (f==='telao') { renderCtrl(); renderTelaoPreview(); }
+}
+
+function delPrayer(id) {
+  prayers = prayers.filter(p=>p.id!==id);
+  renderPrayers(); renderCtrl(); renderTelaoPreview(); updateBadges();
+}
+
+function clearPrayed() {
+  if (!confirm('Remover todos os pedidos já orados?')) return;
+  prayers = prayers.filter(p=>!p.prayed);
+  renderPrayers(); renderCtrl(); renderTelaoPreview(); updateBadges();
+}
+
+function updateBadges() {
+  document.getElementById('bPray').textContent  = prayers.length;
+  document.getElementById('bTelao').textContent = prayers.filter(p=>p.telao).length;
+}
+
+function exportPrayers() {
+  if (!prayers.length) { alert('Nenhum pedido.'); return; }
+  const lines = prayers.map((p,i)=>`${i+1}. ${p.nome} [${p.time}]${p.pulpit?' 🎤 PÚLPITO':''}${p.prayed?' ✓ OROU':''}\n   ${p.motivo}`).join('\n\n');
+  const blob = new Blob([`PEDIDOS DE ORAÇÃO\n${new Date().toLocaleString('pt-BR')}\n\n${lines}`],{type:'text/plain'});
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `pedidos-${Date.now()}.txt`; a.click();
+}
+
+// ════════════════════════════
+// TELÃO
+// ════════════════════════════
+function updateTelaoIdent() {
+  const l1    = document.getElementById('cfgL1')?.value    || localStorage.getItem('l1')    || 'AD Nazaré II';
+  const l2    = document.getElementById('cfgL2')?.value    || localStorage.getItem('l2')    || 'Setor 31';
+  const verse = document.getElementById('cfgVerse')?.value || localStorage.getItem('verse') || 'Filipenses 4:6';
+  document.getElementById('telaoChurch').textContent = l1 + ' \u00A0|\u00A0 ' + l2;
+  document.getElementById('telaoVerse').textContent  = verse;
+}
+
+function renderCtrl() {
+  const list = document.getElementById('ctrlList');
+  if (!prayers.length) { list.innerHTML = '<div style="padding:16px;text-align:center;color:var(--muted);font-size:12px;">Adicione pedidos primeiro</div>'; return; }
+  list.innerHTML = prayers.map(p => `
+    <div class="ctrl-item ${p.telao?'selected':''}" onclick="toggleTelao(${p.id})">
+      <div class="ctrl-check">${p.telao?'✓':''}</div>
+      <div><div class="ctrl-name">${esc(p.nome)}</div><div class="ctrl-reason">${esc((p.motivo||'').substring(0,42))}${(p.motivo||'').length>42?'...':''}</div></div>
+    </div>`).join('');
+  renderTelaoPreview();
+}
+
+function toggleTelao(id) {
+  const p = prayers.find(x=>x.id===id); if(!p) return;
+  p.telao = !p.telao; renderCtrl(); renderTelaoPreview(); updateBadges(); renderPrayers();
+}
+function selAll()   { prayers.forEach(p=>p.telao=true);  renderCtrl(); renderTelaoPreview(); updateBadges(); renderPrayers(); }
+function clearSel() { prayers.forEach(p=>p.telao=false); renderCtrl(); renderTelaoPreview(); updateBadges(); renderPrayers(); }
+
+function renderTelaoPreview() {
+  const sel = prayers.filter(p=>p.telao);
+  const c = document.getElementById('telaoNames');
+  if (!sel.length) { c.innerHTML = '<div class="telao-empty">Selecione os pedidos ao lado</div>'; return; }
+  c.innerHTML = sel.map((p,i) => `
+    <div class="telao-item">
+      <div class="telao-num">${i+1}.</div>
+      <div>
+        <div class="telao-item-name">${esc(p.nome)}</div>
+        ${p.motivo ? `<div class="telao-item-reason">${esc(p.motivo)}</div>` : ''}
+      </div>
+    </div>`).join('');
+}
+
+function exportImage() {
+  const sel = prayers.filter(p=>p.telao);
+  if (!sel.length) { alert('Selecione ao menos um pedido para o telão.'); return; }
+  log('Gerando imagem...', 'll');
+  const card = document.getElementById('telaoCard');
+  html2canvas(card, { backgroundColor: '#000000', scale: 2, useCORS: true, allowTaint: true })
+    .then(canvas => {
+      const a = document.createElement('a');
+      a.href = canvas.toDataURL('image/jpeg', 0.92);
+      a.download = `Telao_Oracao_${new Date().toISOString().slice(0,10)}_${Date.now()}.jpg`;
+      a.click();
+      log('Imagem exportada com sucesso ✓', 'ls');
+    })
+    .catch(e => log('Erro ao exportar: ' + e.message, 'le'));
+}
+
+// ════════════════════════════
+// MONITOR
+// ════════════════════════════
+async function scanComments() {
+  const ytKey     = localStorage.getItem('ytKey');
+  const geminiKey = localStorage.getItem('geminiKey');
+  const keywords  = document.getElementById('keywords').value.trim();
+  if (!ytKey || !liveChatId) return;
+
+  try {
+    const data = await fetchChat(liveChatId, ytKey, nextPageToken);
+    nextPageToken = data.nextPageToken;
+
+    const newMsgs = (data.items||[]).filter(item => {
+      if (processedIds.has(item.id)) return false;
+      processedIds.add(item.id); return true;
+    });
+    if (!newMsgs.length) return;
+
+    totalMsgs += newMsgs.length;
+    document.getElementById('bChat').textContent = totalMsgs;
+
+    const kwArr = keywords.split(',').map(k=>k.trim().toLowerCase()).filter(Boolean);
+    newMsgs.forEach(item => {
+      const text   = item.snippet?.displayMessage || '';
+      const author = item.authorDetails?.displayName || 'Anônimo';
+      const isPray = kwArr.some(kw => text.toLowerCase().includes(kw));
+      appendMsg({ id: item.id, author, text }, isPray, false);
+    });
+
+    if (geminiKey) {
+      const cands = newMsgs.filter(item => kwArr.some(kw=>(item.snippet?.displayMessage||'').toLowerCase().includes(kw)));
+      if (cands.length) {
+        log(cands.length + ' candidato(s) → analisando com IA...', 'll');
+        const comments = cands.map(item=>({ author: item.authorDetails?.displayName||'Anônimo', text: item.snippet?.displayMessage||'' }));
+        const pedidos = await analyzeWithGemini(comments, keywords, geminiKey);
+        pedidos.forEach(p => { if (!prayers.find(x=>x.original===p.original)) addPrayer(p.nome, p.motivo, p.original); });
+        if (pedidos.length) log('✓ IA detectou ' + pedidos.length + ' pedido(s)', 'ls');
+      }
+    }
+    setStatus('Ao vivo — ' + totalMsgs + ' msgs', 'live');
+  } catch(e) { log('Erro: ' + e.message, 'le'); }
+}
+
+async function startMonitor() {
+  const videoId = document.getElementById('liveSelect').value.trim();
+  const ytKey   = localStorage.getItem('ytKey');
+  if (!videoId) { alert('Selecione uma live ativa no seletor acima.'); return; }
+  if (!ytKey)   { alert('Configure a YouTube API Key em ⚙.'); return; }
+
+  document.getElementById('btnStart').disabled = true;
+  document.getElementById('btnStop').disabled  = false;
+  setStatus('Conectando...', 'loading');
+  log('Conectando ao chat da live...', 'll');
+
+  try {
+    liveChatId = await getLiveChatId(videoId, ytKey);
+    log('Chat ao vivo conectado! ✓', 'ls');
+    nextPageToken = null; processedIds = new Set(); totalMsgs = 0;
+    document.getElementById('chatMessages').innerHTML = '';
+    await scanComments();
+    const sec = parseInt(document.getElementById('interval').value) || 30;
+    monitorInterval = setInterval(scanComments, sec * 1000);
+  } catch(e) {
+    log('Erro: ' + e.message, 'le');
+    setStatus('Erro', '');
+    document.getElementById('btnStart').disabled = false;
+    document.getElementById('btnStop').disabled  = true;
+  }
+}
+
+function stopMonitor() {
+  if (monitorInterval) { clearInterval(monitorInterval); monitorInterval = null; }
+  setStatus('Desconectado', '');
+  document.getElementById('btnStart').disabled = false;
+  document.getElementById('btnStop').disabled  = true;
+  log('Monitor parado.', 'lw');
+}
+</script>
+</body>
+</html>
