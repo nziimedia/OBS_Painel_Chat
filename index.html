@@ -686,7 +686,7 @@ async function doSend(text) {
     } else {
       document.getElementById('replyInput').value = '';
       clearReply();
-      appendMsg({ id: 'sent-' + Date.now(), author: '✉ Você', text }, false, true);
+      //appendMsg({ id: 'sent-' + Date.now(), author: '✉ Você', text }, false, true);
       log('Mensagem enviada ao chat ✓', 'ls');
     }
   } catch(e) { log('Erro ao enviar: ' + e.message, 'le'); }
