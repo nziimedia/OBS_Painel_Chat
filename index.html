@@ -305,10 +305,20 @@ body {
     <div class="modal-label">Versículo do rodapé</div>
     <input class="modal-input" type="text" id="cfgVerse" placeholder="Filipenses 4:6" />
 
+    <div class="modal-label" style="margin-top:8px; color:var(--blue);">Holyrics — IP do PC de Projeção</div>
+    <input class="modal-input" type="text" id="cfgHlyIp" placeholder="Ex: 192.168.1.50" />
+
+    <div class="modal-label" style="color:var(--blue);">Holyrics — Porta do API Server</div>
+    <input class="modal-input" type="text" id="cfgHlyPort" placeholder="8091" />
+
+    <div class="modal-label" style="color:var(--blue);">Holyrics — Token da API</div>
+    <input class="modal-input" type="password" id="cfgHlyToken" placeholder="Token gerado em API Server > Gerenciar permissões" />
+
     <div class="modal-note">
       <strong>YouTube API Key:</strong> console.cloud.google.com → YouTube Data API v3 → Credenciais<br>
       <strong>OAuth Client ID:</strong> Credenciais → Criar → Aplicativo da Web → adicione <code>null</code> nas origens autorizadas<br>
-      <strong>Gemini (grátis):</strong> aistudio.google.com/app/apikey
+      <strong>Gemini (grátis):</strong> aistudio.google.com/app/apikey<br>
+      <strong>Holyrics:</strong> no PC de projeção, vá em Menu Arquivo → Configurações → API Server, ative o servidor e crie um token em "Gerenciar permissões" liberando as ações na coluna "Local" (mínimo: <code>ShowText</code> e <code>CloseCurrentPresentation</code>)
     </div>
 
     <div class="modal-acts">
@@ -417,6 +427,8 @@ body {
         <div style="padding:16px;text-align:center;color:var(--muted);font-size:12px;">Adicione pedidos primeiro</div>
       </div>
       <div class="ctrl-footer">
+        <button class="btn" id="btnProjetar" style="width:100%; background:linear-gradient(135deg,#5cb88a,#3a8f63); color:#0d0d18; font-size:13px; padding:11px 14px;" onclick="projectToHolyrics()">🎥 PROJETAR NO HOLYRICS</button>
+        <button class="btn btn-outline btn-sm" style="width:100%" onclick="closeHolyrics()">⏹ Encerrar projeção</button>
         <button class="btn btn-gold" style="width:100%" onclick="exportImage()">📷 Exportar como Imagem</button>
         <button class="btn btn-outline btn-sm" style="width:100%" onclick="selAll()">Selecionar todos</button>
         <button class="btn btn-outline btn-sm" style="width:100%" onclick="clearSel()">Limpar seleção</button>
@@ -477,6 +489,9 @@ function loadSettings() {
   document.getElementById('cfgL1').value       = s('l1') || 'AD Nazaré II';
   document.getElementById('cfgL2').value       = s('l2') || 'Setor 31';
   document.getElementById('cfgVerse').value    = s('verse') || 'Filipenses 4:6 — Em tudo pela oração apresentai os vossos pedidos a Deus';
+  document.getElementById('cfgHlyIp').value    = s('hlyIp');
+  document.getElementById('cfgHlyPort').value  = s('hlyPort') || '8091';
+  document.getElementById('cfgHlyToken').value = s('hlyToken');
   updateTelaoIdent();
 }
 
@@ -488,6 +503,9 @@ function saveSettings() {
   localStorage.setItem('l1',       document.getElementById('cfgL1').value.trim());
   localStorage.setItem('l2',       document.getElementById('cfgL2').value.trim());
   localStorage.setItem('verse',    document.getElementById('cfgVerse').value.trim());
+  localStorage.setItem('hlyIp',    document.getElementById('cfgHlyIp').value.trim());
+  localStorage.setItem('hlyPort',  document.getElementById('cfgHlyPort').value.trim());
+  localStorage.setItem('hlyToken', document.getElementById('cfgHlyToken').value.trim());
   closeModal('modalSettings');
   updateTelaoIdent();
   initOAuth();
@@ -913,6 +931,97 @@ function exportImage() {
     log('Falha estrutural de render: ' + e.message, 'le');
     alert('Erro ao exportar canvas. Verifique o console interno do log.');
   });
+}
+
+// ════════════════════════════
+// HOLYRICS API
+// ════════════════════════════
+
+// Monta a URL base da API a partir das configurações salvas
+function getHolyricsConfig() {
+  const ip    = localStorage.getItem('hlyIp')    || '';
+  const port  = localStorage.getItem('hlyPort')  || '8091';
+  const token = localStorage.getItem('hlyToken') || '';
+  return { ip, port, token };
+}
+
+// Faz a requisição HTTP para o Holyrics. Isola aqui pra facilitar ajuste
+// caso o formato exato do JSON precise mudar (ver nota no botão ⚙ Configurações).
+async function holyricsRequest(payload) {
+  const { ip, port, token } = getHolyricsConfig();
+  if (!ip || !token) {
+    throw new Error('Configure o IP e o Token do Holyrics em ⚙ Configurações primeiro.');
+  }
+  const url = `http://${ip}:${port}/api/index.php?token=${encodeURIComponent(token)}`;
+
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload)
+  });
+
+  // O Holyrics responde JSON com status=ok ou uma mensagem de erro/código
+  let data;
+  try { data = await res.json(); } catch(e) { data = null; }
+
+  if (!res.ok || (data && data.status && data.status !== 'ok')) {
+    const msg = data?.message || data?.status || `HTTP ${res.status}`;
+    throw new Error(msg);
+  }
+  return data;
+}
+
+// Botão principal da aba Telão: envia os pedidos selecionados para a
+// tela de projeção do Holyrics usando a ação ShowText.
+async function projectToHolyrics() {
+  const sel = prayers.filter(p => p.telao);
+  if (!sel.length) { alert('Selecione ao menos um pedido para projetar.'); return; }
+
+  const btn = document.getElementById('btnProjetar');
+  btn.disabled = true;
+  const originalLabel = btn.textContent;
+  btn.textContent = '⏳ Enviando...';
+  log('Enviando pedidos para o Holyrics...', 'll');
+
+  // Um slide por pedido (nome em destaque + motivo).
+  // Se o Holyrics recusar esse formato, veja a nota em ⚙ Configurações
+  // para testar o JSON exato pela tela nativa de API Server do programa.
+  const slides = sel.map(p => ({
+    text: p.motivo ? `${p.nome}\n${p.motivo}` : p.nome
+  }));
+
+  const payload = {
+    action: 'ShowText',
+    title: 'Pedidos de Oração',
+    slides: slides
+  };
+
+  try {
+    await holyricsRequest(payload);
+    log(`✓ Projetado no Holyrics (${sel.length} pedido[s])`, 'ls');
+  } catch(e) {
+    log('Erro ao projetar no Holyrics: ' + e.message, 'le');
+    alert('Não foi possível projetar no Holyrics:\n' + e.message +
+      '\n\nVerifique: IP/porta/token em ⚙, se o API Server está ativo no Holyrics, ' +
+      'e se a permissão da ação está liberada para esse token.\n\n' +
+      'Se o erro aparecer como falha de rede/CORS no console (F12), me avise — ' +
+      'pode ser necessário um pequeno intermediário local.');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = originalLabel;
+  }
+}
+
+// Encerra a apresentação atual no Holyrics (volta a tela ao estado ocioso)
+async function closeHolyrics() {
+  log('Encerrando projeção no Holyrics...', 'll');
+  try {
+    await holyricsRequest({ action: 'CloseCurrentPresentation' });
+    log('✓ Projeção encerrada no Holyrics', 'ls');
+  } catch(e) {
+    log('Erro ao encerrar projeção: ' + e.message, 'le');
+    alert('Não foi possível encerrar a projeção:\n' + e.message);
+  }
 }
 
 // ════════════════════════════
