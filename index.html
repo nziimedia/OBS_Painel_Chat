@@ -961,12 +961,15 @@ async function holyricsRequest(payload) {
   });
 
   // O Holyrics responde JSON com status=ok ou uma mensagem de erro/código
-  let data;
-  try { data = await res.json(); } catch(e) { data = null; }
+  let data, rawText;
+  try {
+    rawText = await res.clone().text();
+    data = await res.json();
+  } catch(e) { data = null; }
 
   if (!res.ok || (data && data.status && data.status !== 'ok')) {
-    const msg = data?.message || data?.status || `HTTP ${res.status}`;
-    throw new Error(msg);
+    const detail = data ? JSON.stringify(data) : (rawText || `HTTP ${res.status}`);
+    throw new Error(detail);
   }
   return data;
 }
