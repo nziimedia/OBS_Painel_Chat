@@ -314,11 +314,14 @@ body {
     <div class="modal-label" style="color:var(--blue);">Holyrics — Token da API</div>
     <input class="modal-input" type="password" id="cfgHlyToken" placeholder="Token gerado em API Server > Gerenciar permissões" />
 
+    <div class="modal-label" style="color:var(--blue);">Holyrics — ID do Texto (item na biblioteca)</div>
+    <input class="modal-input" type="text" id="cfgHlyTextId" placeholder="Ex: 7e6e6767-add1-4c13-80dc-87a82cf4512b" />
+
     <div class="modal-note">
       <strong>YouTube API Key:</strong> console.cloud.google.com → YouTube Data API v3 → Credenciais<br>
       <strong>OAuth Client ID:</strong> Credenciais → Criar → Aplicativo da Web → adicione <code>null</code> nas origens autorizadas<br>
       <strong>Gemini (grátis):</strong> aistudio.google.com/app/apikey<br>
-      <strong>Holyrics:</strong> no PC de projeção, vá em Menu Arquivo → Configurações → API Server, ative o servidor e crie um token em "Gerenciar permissões" liberando as ações na coluna "Local" (mínimo: <code>ShowText</code> e <code>CloseCurrentPresentation</code>)
+      <strong>Holyrics:</strong> no PC de projeção, vá em Menu Arquivo → Configurações → API Server, ative o servidor e crie um token em "Gerenciar permissões" liberando na coluna "Local": <code>ShowText</code>, <code>EditText</code> e <code>CloseCurrentPresentation</code>. Também é necessário habilitar Menu Arquivo → Configurações → Avançado → JavaScript → Configurações → Permissões avançadas (necessário para o EditText). O "ID do Texto" é o item já existente na sua biblioteca do Holyrics usado como base para projetar os pedidos.
     </div>
 
     <div class="modal-acts">
@@ -492,6 +495,7 @@ function loadSettings() {
   document.getElementById('cfgHlyIp').value    = s('hlyIp');
   document.getElementById('cfgHlyPort').value  = s('hlyPort') || '8091';
   document.getElementById('cfgHlyToken').value = s('hlyToken');
+  document.getElementById('cfgHlyTextId').value = s('hlyTextId') || '7e6e6767-add1-4c13-80dc-87a82cf4512b';
   updateTelaoIdent();
 }
 
@@ -506,6 +510,7 @@ function saveSettings() {
   localStorage.setItem('hlyIp',    document.getElementById('cfgHlyIp').value.trim());
   localStorage.setItem('hlyPort',  document.getElementById('cfgHlyPort').value.trim());
   localStorage.setItem('hlyToken', document.getElementById('cfgHlyToken').value.trim());
+  localStorage.setItem('hlyTextId', document.getElementById('cfgHlyTextId').value.trim());
   closeModal('modalSettings');
   updateTelaoIdent();
   initOAuth();
@@ -939,26 +944,37 @@ function exportImage() {
 
 // Monta a URL base da API a partir das configurações salvas
 function getHolyricsConfig() {
-  const ip    = localStorage.getItem('hlyIp')    || '';
-  const port  = localStorage.getItem('hlyPort')  || '8091';
-  const token = localStorage.getItem('hlyToken') || '';
-  return { ip, port, token };
+  const ip      = localStorage.getItem('hlyIp')     || '';
+  const port    = localStorage.getItem('hlyPort')   || '8091';
+  const token   = localStorage.getItem('hlyToken')  || '';
+  const textId  = localStorage.getItem('hlyTextId') || '';
+  return { ip, port, token, textId };
 }
 
-// Faz a requisição HTTP para o Holyrics.
-// Sintaxe confirmada com o suporte oficial: GET http://IP:PORT/api/{action}?token=...&param=valor
-// (o nome da ação é case sensitive e vai na própria URL, não em POST/JSON)
-async function holyricsRequest(action, params = {}) {
+// Faz uma requisição GET simples: http://IP:PORT/api/{action}?token=...&param=valor
+async function holyricsGet(action, params = {}) {
   const { ip, port, token } = getHolyricsConfig();
-  if (!ip || !token) {
-    throw new Error('Configure o IP e o Token do Holyrics em ⚙ Configurações primeiro.');
-  }
-
+  if (!ip || !token) throw new Error('Configure o IP e o Token do Holyrics em ⚙ Configurações primeiro.');
   const qs = new URLSearchParams({ token, ...params });
   const url = `http://${ip}:${port}/api/${action}?${qs.toString()}`;
-
   const res = await fetch(url, { method: 'GET' });
+  return parseHolyricsResponse(res);
+}
 
+// Faz uma requisição POST com corpo JSON: usada por ações de escrita (ex: EditText)
+async function holyricsPost(action, body) {
+  const { ip, port, token } = getHolyricsConfig();
+  if (!ip || !token) throw new Error('Configure o IP e o Token do Holyrics em ⚙ Configurações primeiro.');
+  const url = `http://${ip}:${port}/api/${action}?token=${encodeURIComponent(token)}`;
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body)
+  });
+  return parseHolyricsResponse(res);
+}
+
+async function parseHolyricsResponse(res) {
   let data, rawText;
   try {
     rawText = await res.clone().text();
@@ -972,31 +988,41 @@ async function holyricsRequest(action, params = {}) {
   return data;
 }
 
-// Botão principal da aba Telão: envia os pedidos selecionados para a
-// tela de projeção do Holyrics usando a ação ShowText.
+// Botão principal da aba Telão: atualiza o texto "PEDIDO DE ORAÇÃO DA LIVE"
+// (já existente na biblioteca do Holyrics, mantendo tema/estilo) com todos os
+// pedidos selecionados em uma lista única, e depois projeta esse texto.
 async function projectToHolyrics() {
   const sel = prayers.filter(p => p.telao);
   if (!sel.length) { alert('Selecione ao menos um pedido para projetar.'); return; }
+
+  const { textId } = getHolyricsConfig();
+  if (!textId) { alert('Configure o "ID do Texto" do Holyrics em ⚙ Configurações primeiro.'); return; }
 
   const btn = document.getElementById('btnProjetar');
   btn.disabled = true;
   const originalLabel = btn.textContent;
   btn.textContent = '⏳ Enviando...';
-  log('Enviando pedidos para o Holyrics...', 'll');
+  log('Atualizando pedidos no Holyrics...', 'll');
 
-  // Monta um texto único com todos os pedidos selecionados (nome + motivo).
-  // ShowText espera os dados como parâmetros na URL, não como JSON no body
-  // (confirmado pelo suporte: GET /api/{action}?token=...&param=valor).
-  const texto = sel.map(p => p.motivo ? `${p.nome}\n${p.motivo}` : p.nome).join('\n\n');
+  // Todos os pedidos numa lista única, num só slide
+  const linhas = sel.map((p, i) => p.motivo ? `${i+1}. ${p.nome} — ${p.motivo}` : `${i+1}. ${p.nome}`);
+  const texto = linhas.join('\n');
 
   try {
-    await holyricsRequest('ShowText', { title: 'Pedidos de Oração', text: texto });
+    await holyricsPost('EditText', {
+      id: textId,
+      slides: [ { text: texto, styled_text: texto } ]
+    });
+    log('Texto atualizado, projetando...', 'll');
+
+    await holyricsGet('ShowText', { id: textId });
     log(`✓ Projetado no Holyrics (${sel.length} pedido[s])`, 'ls');
   } catch(e) {
     log('Erro ao projetar no Holyrics: ' + e.message, 'le');
     alert('Não foi possível projetar no Holyrics:\n' + e.message +
-      '\n\nVerifique: IP/porta/token em ⚙, se o API Server está ativo no Holyrics, ' +
-      'e se a permissão da ação ShowText está liberada para esse token.');
+      '\n\nVerifique: IP/porta/token/ID do texto em ⚙, se o API Server está ativo, ' +
+      'e se as permissões ShowText/EditText estão liberadas para esse token ' +
+      '(inclusive as Permissões avançadas em Arquivo > Configurações > Avançado > JavaScript).');
   } finally {
     btn.disabled = false;
     btn.textContent = originalLabel;
@@ -1007,7 +1033,7 @@ async function projectToHolyrics() {
 async function closeHolyrics() {
   log('Encerrando projeção no Holyrics...', 'll');
   try {
-    await holyricsRequest('CloseCurrentPresentation');
+    await holyricsGet('CloseCurrentPresentation');
     log('✓ Projeção encerrada no Holyrics', 'ls');
   } catch(e) {
     log('Erro ao encerrar projeção: ' + e.message, 'le');
