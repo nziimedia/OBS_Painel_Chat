@@ -945,22 +945,20 @@ function getHolyricsConfig() {
   return { ip, port, token };
 }
 
-// Faz a requisição HTTP para o Holyrics. Isola aqui pra facilitar ajuste
-// caso o formato exato do JSON precise mudar (ver nota no botão ⚙ Configurações).
-async function holyricsRequest(payload) {
+// Faz a requisição HTTP para o Holyrics.
+// Sintaxe confirmada com o suporte oficial: GET http://IP:PORT/api/{action}?token=...&param=valor
+// (o nome da ação é case sensitive e vai na própria URL, não em POST/JSON)
+async function holyricsRequest(action, params = {}) {
   const { ip, port, token } = getHolyricsConfig();
   if (!ip || !token) {
     throw new Error('Configure o IP e o Token do Holyrics em ⚙ Configurações primeiro.');
   }
-  const url = `http://${ip}:${port}/api/index.php?token=${encodeURIComponent(token)}`;
 
-  const res = await fetch(url, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(payload)
-  });
+  const qs = new URLSearchParams({ token, ...params });
+  const url = `http://${ip}:${port}/api/${action}?${qs.toString()}`;
 
-  // O Holyrics responde JSON com status=ok ou uma mensagem de erro/código
+  const res = await fetch(url, { method: 'GET' });
+
   let data, rawText;
   try {
     rawText = await res.clone().text();
@@ -986,29 +984,19 @@ async function projectToHolyrics() {
   btn.textContent = '⏳ Enviando...';
   log('Enviando pedidos para o Holyrics...', 'll');
 
-  // Um slide por pedido (nome em destaque + motivo).
-  // Se o Holyrics recusar esse formato, veja a nota em ⚙ Configurações
-  // para testar o JSON exato pela tela nativa de API Server do programa.
-  const slides = sel.map(p => ({
-    text: p.motivo ? `${p.nome}\n${p.motivo}` : p.nome
-  }));
-
-  const payload = {
-    action: 'ShowText',
-    title: 'Pedidos de Oração',
-    slides: slides
-  };
+  // Monta um texto único com todos os pedidos selecionados (nome + motivo).
+  // ShowText espera os dados como parâmetros na URL, não como JSON no body
+  // (confirmado pelo suporte: GET /api/{action}?token=...&param=valor).
+  const texto = sel.map(p => p.motivo ? `${p.nome}\n${p.motivo}` : p.nome).join('\n\n');
 
   try {
-    await holyricsRequest(payload);
+    await holyricsRequest('ShowText', { title: 'Pedidos de Oração', text: texto });
     log(`✓ Projetado no Holyrics (${sel.length} pedido[s])`, 'ls');
   } catch(e) {
     log('Erro ao projetar no Holyrics: ' + e.message, 'le');
     alert('Não foi possível projetar no Holyrics:\n' + e.message +
       '\n\nVerifique: IP/porta/token em ⚙, se o API Server está ativo no Holyrics, ' +
-      'e se a permissão da ação está liberada para esse token.\n\n' +
-      'Se o erro aparecer como falha de rede/CORS no console (F12), me avise — ' +
-      'pode ser necessário um pequeno intermediário local.');
+      'e se a permissão da ação ShowText está liberada para esse token.');
   } finally {
     btn.disabled = false;
     btn.textContent = originalLabel;
@@ -1019,7 +1007,7 @@ async function projectToHolyrics() {
 async function closeHolyrics() {
   log('Encerrando projeção no Holyrics...', 'll');
   try {
-    await holyricsRequest({ action: 'CloseCurrentPresentation' });
+    await holyricsRequest('CloseCurrentPresentation');
     log('✓ Projeção encerrada no Holyrics', 'ls');
   } catch(e) {
     log('Erro ao encerrar projeção: ' + e.message, 'le');
