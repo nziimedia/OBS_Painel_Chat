@@ -288,6 +288,17 @@ body {
   <div class="modal-box">
     <h3>⚙ Configurações</h3>
 
+    <div class="modal-label">Conexão com a Live</div>
+    <div style="display:flex; gap:6px;">
+      <button class="btn btn-outline" style="flex-shrink:0" onclick="openLives()">🔴 Buscar Lives</button>
+      <select id="liveSelect" class="modal-input" style="flex:1"><option value="">— selecione uma live ativa —</option></select>
+    </div>
+    <div style="display:flex; gap:6px;">
+      <button class="btn btn-gold" id="btnStart" style="flex:1" onclick="startMonitor()">▶ Conectar</button>
+      <button class="btn btn-outline" id="btnStop" style="flex:1" onclick="stopMonitor()" disabled>⏹ Parar</button>
+    </div>
+    <div style="font-size:10px;color:var(--muted);line-height:1.6">O painel tenta conectar automaticamente à live ativa assim que é aberto. Use os controles acima só se precisar reconectar manualmente ou escolher outra live.</div>
+
     <div class="modal-label">Handle do Canal</div>
     <input class="modal-input" type="text" id="cfgHandle" placeholder="@ADNazareII" />
 
@@ -359,13 +370,8 @@ body {
 
 <div class="topbar">
   <div class="topbar-logo"><span>✝</span>AD Nazaré II</div>
-  <div class="topbar-fields">
-    <button class="btn btn-outline" onclick="openLives()">🔴 Buscar Lives</button>
-    <select id="liveSelect"><option value="">— selecione uma live ativa —</option></select>
-  </div>
-  <button class="btn btn-gold" id="btnStart" onclick="startMonitor()">▶ Conectar</button>
-  <button class="btn btn-outline" id="btnStop" onclick="stopMonitor()" disabled>⏹ Parar</button>
-  <div class="status-pill"><div class="dot" id="dot"></div><span id="statusTxt">Desconectado</span></div>
+  <div class="status-pill" style="flex:1;"><div class="dot" id="dot"></div><span id="statusTxt">Desconectado</span></div>
+  <button class="btn-icon" onclick="stopMonitor()" title="Parar conexão com a live">⏹</button>
   <button class="btn-icon" onclick="openModal('modalSettings')" title="Configurações">⚙</button>
 </div>
 
@@ -481,6 +487,7 @@ let pendingSendText = null;
 window.onload = () => {
   loadSettings();
   setTimeout(initOAuth, 1500);
+  setTimeout(autoConnectActiveLive, 600);
 };
 
 function loadSettings() {
@@ -578,6 +585,59 @@ function nowT() { return new Date().toLocaleTimeString('pt-BR'); }
 // ════════════════════════════
 // BUSCAR LIVES
 // ════════════════════════════
+
+// Busca as lives ativas do canal configurado. Usada tanto pela busca manual
+// quanto pela conexão automática ao abrir o painel.
+async function fetchActiveLives(ytKey, handle) {
+  const r1 = await fetch(`https://www.googleapis.com/youtube/v3/channels?part=id&forHandle=${encodeURIComponent(handle)}&key=${ytKey}`);
+  const d1 = await r1.json();
+  if (d1.error) throw new Error(d1.error.message);
+  const channelId = d1.items?.[0]?.id;
+  if (!channelId) throw new Error('Canal não encontrado: ' + handle);
+
+  const r2 = await fetch(`https://www.googleapis.com/youtube/v3/search?part=snippet&channelId=${channelId}&eventType=live&type=video&key=${ytKey}`);
+  const d2 = await r2.json();
+  if (d2.error) throw new Error(d2.error.message);
+  return d2.items || [];
+}
+
+// Tenta conectar automaticamente à live ativa assim que o painel é aberto.
+// Se não encontrar nenhuma live no momento, tenta de novo periodicamente.
+let autoConnectTimer = null;
+async function autoConnectActiveLive() {
+  if (liveChatId) return; // já conectado, não repete
+
+  const ytKey  = localStorage.getItem('ytKey');
+  const handle = localStorage.getItem('handle') || '@ADNazareII';
+  if (!ytKey) { log('Configure a YouTube API Key em ⚙ para conectar automaticamente.', 'lw'); return; }
+
+  log('Procurando live ativa automaticamente...', 'll');
+  try {
+    const items = await fetchActiveLives(ytKey, handle);
+    if (!items.length) {
+      log('Nenhuma live ativa no momento. Tentando de novo em 30s...', 'lw');
+      clearTimeout(autoConnectTimer);
+      autoConnectTimer = setTimeout(autoConnectActiveLive, 30000);
+      return;
+    }
+    // Usa a primeira live encontrada
+    const live = items[0];
+    const sel = document.getElementById('liveSelect');
+    sel.innerHTML = '<option value="">— selecione uma live ativa —</option>';
+    const opt = document.createElement('option');
+    opt.value = live.id.videoId;
+    opt.textContent = '🔴 ' + live.snippet.title;
+    sel.appendChild(opt);
+    sel.value = live.id.videoId;
+    log('Live encontrada: ' + live.snippet.title + ' — conectando...', 'ls');
+    await startMonitor();
+  } catch(e) {
+    log('Erro ao conectar automaticamente: ' + e.message + '. Tentando de novo em 30s...', 'le');
+    clearTimeout(autoConnectTimer);
+    autoConnectTimer = setTimeout(autoConnectActiveLive, 30000);
+  }
+}
+
 async function openLives() {
   const ytKey  = localStorage.getItem('ytKey');
   const handle = localStorage.getItem('handle') || '@ADNazareII';
@@ -589,17 +649,7 @@ async function openLives() {
   log('Buscando lives ativas em ' + handle + '...', 'll');
 
   try {
-    const r1 = await fetch(`https://www.googleapis.com/youtube/v3/channels?part=id&forHandle=${encodeURIComponent(handle)}&key=${ytKey}`);
-    const d1 = await r1.json();
-    if (d1.error) throw new Error(d1.error.message);
-    const channelId = d1.items?.[0]?.id;
-    if (!channelId) throw new Error('Canal não encontrado: ' + handle);
-
-    const r2 = await fetch(`https://www.googleapis.com/youtube/v3/search?part=snippet&channelId=${channelId}&eventType=live&type=video&key=${ytKey}`);
-    const d2 = await r2.json();
-    if (d2.error) throw new Error(d2.error.message);
-
-    const items = d2.items || [];
+    const items = await fetchActiveLives(ytKey, handle);
     const ll = document.getElementById('liveList');
     const sel = document.getElementById('liveSelect');
 
@@ -1118,6 +1168,8 @@ async function startMonitor() {
 
 function stopMonitor() {
   if (monitorInterval) { clearInterval(monitorInterval); monitorInterval = null; }
+  clearTimeout(autoConnectTimer);
+  liveChatId = null;
   setStatus('Desconectado', '');
   document.getElementById('btnStart').disabled = false;
   document.getElementById('btnStop').disabled  = true;
