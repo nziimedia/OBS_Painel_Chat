@@ -41,6 +41,9 @@ body {
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  /* Painel encolhido pela metade para caber num Painel URL do OBS mais estreito.
+     Ajuste esse valor (ex: 65% / 40%) se quiser um pouco maior/menor. */
+  zoom: 50%;
 }
 
 /* ── Top Bar ── */
@@ -211,8 +214,10 @@ body {
 
 /* ── ABA TELÃO ── */
 .telao-pane { flex-direction:row; }
-.telao-controls { width:255px; flex-shrink:0; border-right:1px solid var(--border2); display:flex; flex-direction:column; overflow:hidden; }
-.telao-preview { flex:1; display:flex; align-items:center; justify-content:center; padding:28px; background:#000; overflow:auto; }
+.telao-controls { width:100%; flex:1; border-right:none; display:flex; flex-direction:column; overflow:hidden; }
+/* Pré-visualização removida da tela: mantida fora da área visível (fixed, fora do viewport)
+   só para o html2canvas conseguir capturar o card na exportação de imagem. */
+.telao-preview { position:fixed; left:-9999px; top:0; width:1100px; padding:28px; background:#000; display:flex; align-items:center; justify-content:center; }
 
 /* CARD 16:9 FUNDO PRETO */
 .telao-card {
@@ -317,6 +322,16 @@ body {
     <div class="modal-label" style="color:var(--blue);">Holyrics — ID do Texto (item na biblioteca)</div>
     <input class="modal-input" type="text" id="cfgHlyTextId" placeholder="Ex: 7e6e6767-add1-4c13-80dc-87a82cf4512b" />
 
+    <div class="modal-label" style="margin-top:8px;">Palavras-chave de detecção (IA)</div>
+    <input class="modal-input" type="text" id="keywords" value="oração,ore por,pedido de oração,orem por,preciso de oração,pede oração,intercede,orar por,intercessão,cura,saúde" />
+
+    <div class="modal-label">Intervalo de varredura</div>
+    <select class="modal-input" id="interval">
+      <option value="20">20 segundos</option>
+      <option value="30">30 segundos</option>
+      <option value="60" selected>60 segundos</option>
+    </select>
+
     <div class="modal-note">
       <strong>YouTube API Key:</strong> console.cloud.google.com → YouTube Data API v3 → Credenciais<br>
       <strong>OAuth Client ID:</strong> Credenciais → Criar → Aplicativo da Web → adicione <code>null</code> nas origens autorizadas<br>
@@ -391,18 +406,6 @@ body {
         <input type="text" id="manName" placeholder="Nome da pessoa" />
         <textarea id="manReason" placeholder="Motivo do pedido..."></textarea>
         <button class="btn btn-gold" style="width:100%" onclick="addManual()">+ Adicionar Pedido</button>
-      </div>
-      <div class="col-header">⚙ Detecção IA</div>
-      <div class="side-section">
-        <div class="side-label">Palavras-chave:</div>
-        <input type="text" id="keywords" value="oração,ore por,pedido de oração,orem por,preciso de oração,pede oração,intercede,orar por,intercessão,cura,saúde" />
-        <div class="side-label" style="margin-top:4px">Intervalo de varredura:</div>
-        <select id="interval">
-          <option value="20">20 segundos</option>
-          <option value="30" selected>30 segundos</option>
-          <option value="60">60 segundos</option>
-        </select>
-        <div style="font-size:10px;color:var(--muted);margin-top:4px;line-height:1.6">IA detecta automaticamente pedidos nos comentários com palavras-chave.</div>
       </div>
     </div>
   </div>
@@ -496,6 +499,8 @@ function loadSettings() {
   document.getElementById('cfgHlyPort').value  = s('hlyPort') || '8091';
   document.getElementById('cfgHlyToken').value = s('hlyToken');
   document.getElementById('cfgHlyTextId').value = s('hlyTextId') || '7e6e6767-add1-4c13-80dc-87a82cf4512b';
+  document.getElementById('keywords').value = s('keywords') || 'oração,ore por,pedido de oração,orem por,preciso de oração,pede oração,intercede,orar por,intercessão,cura,saúde';
+  document.getElementById('interval').value = s('interval') || '60';
   updateTelaoIdent();
 }
 
@@ -511,6 +516,8 @@ function saveSettings() {
   localStorage.setItem('hlyPort',  document.getElementById('cfgHlyPort').value.trim());
   localStorage.setItem('hlyToken', document.getElementById('cfgHlyToken').value.trim());
   localStorage.setItem('hlyTextId', document.getElementById('cfgHlyTextId').value.trim());
+  localStorage.setItem('keywords', document.getElementById('keywords').value.trim());
+  localStorage.setItem('interval', document.getElementById('interval').value);
   closeModal('modalSettings');
   updateTelaoIdent();
   initOAuth();
