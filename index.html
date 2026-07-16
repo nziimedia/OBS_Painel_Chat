@@ -367,16 +367,14 @@ body {
   </div>
 </div>
 
-<div class="topbar">
-  <div class="topbar-logo"><span>✝</span>AD Nazaré II</div>
-  <div class="status-pill" style="flex:1;"><div class="dot" id="dot"></div><span id="statusTxt">Desconectado</span></div>
-  <button class="btn-icon" onclick="stopMonitor()" title="Parar conexão com a live">⏹</button>
-  <button class="btn-icon" onclick="openModal('modalSettings')" title="Configurações">⚙</button>
-</div>
-
 <div class="tabs">
   <div class="tab active" id="tab-chat" onclick="switchTab('chat',this)">💬 Chat <span class="tab-badge" id="bChat">0</span></div>
   <div class="tab" id="tab-telao" onclick="switchTab('telao',this)">📺 Telão <span class="tab-badge" id="bTelao">0</span></div>
+  <div style="margin-left:auto; display:flex; align-items:center; gap:6px; padding:0 10px;">
+    <div class="status-pill"><div class="dot" id="dot"></div><span id="statusTxt">Desconectado</span></div>
+    <button class="btn-icon" onclick="stopMonitor()" title="Parar conexão com a live" style="width:26px;height:26px;font-size:12px;">⏹</button>
+    <button class="btn-icon" onclick="openModal('modalSettings')" title="Configurações" style="width:26px;height:26px;font-size:12px;">⚙</button>
+  </div>
 </div>
 
 <div class="body">
@@ -1138,7 +1136,7 @@ async function scanComments() {
         if (pedidos.length) log('✓ IA detectou ' + pedidos.length + ' pedido(s)', 'ls');
       }
     }
-    setStatus('Ao vivo — ' + totalMsgs + ' msgs', 'live');
+    setStatus('Ao vivo', 'live');
   } catch(e) { log('Erro: ' + e.message, 'le'); }
 }
 
