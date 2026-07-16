@@ -420,26 +420,18 @@ body {
     <div class="telao-controls">
       <div class="ctrl-header">Selecionar para Telão</div>
       
-      <div class="side-section" style="border-bottom: 1px solid var(--border2);">
-        <div class="side-label">Tamanho do Texto (Telão):</div>
-        <select id="telaoSizeSelect" onchange="changeTelaoFontSize(this.value)">
-          <option value="0.8">Pequeno (80%)</option>
-          <option value="1.0" selected>Padrão (100%)</option>
-          <option value="1.2">Médio (120%)</option>
-          <option value="1.4">Grande (140%)</option>
-          <option value="1.6">Extra Grande (160%)</option>
-        </select>
-      </div>
-
       <div class="ctrl-list" id="ctrlList">
         <div style="padding:16px;text-align:center;color:var(--muted);font-size:12px;">Adicione pedidos primeiro</div>
       </div>
       <div class="ctrl-footer">
-        <button class="btn" id="btnProjetar" style="width:100%; background:linear-gradient(135deg,#5cb88a,#3a8f63); color:#0d0d18; font-size:13px; padding:11px 14px;" onclick="projectToHolyrics()">🎥 PROJETAR NO HOLYRICS</button>
-        <button class="btn btn-outline btn-sm" style="width:100%" onclick="closeHolyrics()">⏹ Encerrar projeção</button>
-        <button class="btn btn-gold" style="width:100%" onclick="exportImage()">📷 Exportar como Imagem</button>
-        <button class="btn btn-outline btn-sm" style="width:100%" onclick="selAll()">Selecionar todos</button>
-        <button class="btn btn-outline btn-sm" style="width:100%" onclick="clearSel()">Limpar seleção</button>
+        <div style="display:flex; gap:6px;">
+          <button class="btn" id="btnProjetar" style="flex:1; background:linear-gradient(135deg,#5cb88a,#3a8f63); color:#0d0d18; font-size:11px; padding:9px 6px;" onclick="projectToHolyrics()">🎥 Projetar no Holyrics</button>
+          <button class="btn btn-outline btn-sm" style="flex:1" onclick="closeHolyrics()">⏹ Encerrar projeção</button>
+        </div>
+        <div style="display:flex; gap:6px;">
+          <button class="btn btn-outline btn-sm" style="flex:1" onclick="selAll()">Selecionar todos</button>
+          <button class="btn btn-outline btn-sm" style="flex:1" onclick="clearSel()">Limpar seleção</button>
+        </div>
       </div>
     </div>
 
