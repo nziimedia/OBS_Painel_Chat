@@ -41,9 +41,6 @@ body {
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  /* Painel encolhido pela metade para caber num Painel URL do OBS mais estreito.
-     Ajuste esse valor (ex: 65% / 40%) se quiser um pouco maior/menor. */
-  zoom: 50%;
 }
 
 /* ── Top Bar ── */
@@ -149,10 +146,12 @@ body {
 .pane.active { display:flex; }
 
 /* ── ABA CHAT ── */
-.chat-pane { flex-direction:row; }
+.chat-pane { flex-direction:column; }
 .chat-col { display:flex; flex-direction:column; overflow:hidden; border-right:1px solid var(--border2); }
-.chat-col.main { flex:1.4; }
-.chat-col.side { flex:1; }
+.chat-col.main { flex:1; }
+.manual-bar { display:flex; gap:8px; align-items:center; padding:8px 14px; border-top:1px solid var(--border2); background:var(--panel); flex-shrink:0; }
+.manual-bar textarea { resize:none; background:rgba(255,255,255,0.04); border:1px solid var(--border); border-radius:7px; padding:6px 10px; color:var(--text); font-family:'Source Sans 3',sans-serif; font-size:12px; outline:none; }
+.manual-bar input[type=text] { background:rgba(255,255,255,0.04); border:1px solid var(--border); border-radius:7px; padding:6px 10px; color:var(--text); font-family:'Source Sans 3',sans-serif; font-size:12px; outline:none; }
 
 .col-header {
   padding:9px 14px; font-family:'Cinzel',serif; font-size:10px; letter-spacing:2px;
@@ -214,7 +213,7 @@ body {
 
 /* ── ABA TELÃO ── */
 .telao-pane { flex-direction:row; }
-.telao-controls { width:100%; flex:1; border-right:none; display:flex; flex-direction:column; overflow:hidden; }
+.telao-controls { width:100%; max-width:420px; flex-shrink:0; border-right:none; display:flex; flex-direction:column; overflow:hidden; }
 /* Pré-visualização removida da tela: mantida fora da área visível (fixed, fora do viewport)
    só para o html2canvas conseguir capturar o card na exportação de imagem. */
 .telao-preview { position:fixed; left:-9999px; top:0; width:1100px; padding:28px; background:#000; display:flex; align-items:center; justify-content:center; }
@@ -378,7 +377,7 @@ body {
 <div class="body">
 
   <div class="pane chat-pane active" id="pane-chat">
-    <div class="chat-col main">
+    <div class="chat-col main" style="border-right:none;">
       <div class="col-header">
         <span>Mensagens da Live</span>
         <label style="font-size:10px;color:var(--muted2);display:flex;align-items:center;gap:5px;cursor:pointer;">
@@ -400,13 +399,11 @@ body {
       </div>
     </div>
 
-    <div class="chat-col side">
-      <div class="col-header">✝ Pedido Manual</div>
-      <div class="side-section">
-        <input type="text" id="manName" placeholder="Nome da pessoa" />
-        <textarea id="manReason" placeholder="Motivo do pedido..."></textarea>
-        <button class="btn btn-gold" style="width:100%" onclick="addManual()">+ Adicionar Pedido</button>
-      </div>
+    <div class="manual-bar">
+      <span style="font-size:10px;color:var(--gold);letter-spacing:1px;text-transform:uppercase;white-space:nowrap;">✝ Pedido Manual</span>
+      <input type="text" id="manName" placeholder="Nome" style="flex:0 0 130px;" />
+      <textarea id="manReason" placeholder="Motivo do pedido..." style="flex:1;height:32px;"></textarea>
+      <button class="btn btn-gold btn-sm" onclick="addManual()">+ Adicionar</button>
     </div>
   </div>
 
